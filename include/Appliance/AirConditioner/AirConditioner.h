@@ -43,6 +43,8 @@ class AirConditioner : public ApplianceBase {
   void setPowerQuery(bool state) { this->m_powerQuery = state; }
   /// Fault code from the status frame (0 = none)
   uint8_t getErrorCode() const { return this->m_errorCode; }
+  /// Raw appliance-error flag from status byte 1, independent of the numeric fault code.
+  bool getApplianceError() const { return this->m_applianceError; }
   /// The unit's own filter cleaning reminder
   bool getFilterAlert() const { return this->m_filterAlert; }
   /// Queue an engineering group data query. `onData` receives the 0xC1 reply body
@@ -71,6 +73,7 @@ class AirConditioner : public ApplianceBase {
   StatusData m_status{};
   bool m_sendControl{};
   bool m_powerQuery{true};
+  bool m_applianceError{};
   uint8_t m_errorCode{};
   bool m_filterAlert{};
   Control m_pendingControl{};

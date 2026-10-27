@@ -114,6 +114,8 @@ class StatusData : public FrameData {
 
   bool isFahrenheits() const { return this->m_getValue(10, 4); }
 
+  /* APPLIANCE ERROR FLAG */
+  bool getApplianceError() const { return this->m_getValue(1, 0x80); }
   /* FAULT CODE (0 = none) */
   uint8_t getErrorCode() const { return this->m_getValue(16); }
   /* FILTER CLEANING REMINDER */

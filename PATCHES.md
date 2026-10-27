@@ -18,3 +18,6 @@ commit ESPHome 2026.9 pins, plus:
 5. **Optional power query** – `setPowerQuery(false)` stops the GET_POWERUSAGE (group 4) request
    every 30 s. Units that never answer it (e.g. Qlima S 52xx) otherwise hold the bus for
    three 2-second retries each time, delaying commands.
+6. **Raw appliance-error flag** from status byte 1 bit 7: `getApplianceError()` is
+   retained independently of byte 16's numeric fault code. Some multi-zone status
+   conditions may set the flag without publishing a conventional fault code.
