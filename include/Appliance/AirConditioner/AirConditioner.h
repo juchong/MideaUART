@@ -38,11 +38,24 @@ class AirConditioner : public ApplianceBase {
   Preset getPreset() const { return this->m_preset; }
   const Capabilities &getCapabilities() const { return this->m_capabilities; }
   void displayToggle() { this->m_displayToggle(); }
+  /// Ask for power usage (group 4) every 30 s. On by default; units that never answer
+  /// it hold the bus for every retry, so turn it off when nobody reads it.
+  void setPowerQuery(bool state) { this->m_powerQuery = state; }
+  /// Fault code from the status frame (0 = none)
+  uint8_t getErrorCode() const { return this->m_errorCode; }
+  /// Raw appliance-error flag from status byte 1, independent of the numeric fault code.
+  bool getApplianceError() const { return this->m_applianceError; }
+  /// The unit's own filter cleaning reminder
+  bool getFilterAlert() const { return this->m_filterAlert; }
+  /// Queue an engineering group data query. `onData` receives the 0xC1 reply body
+  /// (byte 0 = 0xC1) for this group; `onError` runs when all attempts fail.
+  void queryGroup(uint8_t group, std::function<void(const FrameData &)> onData, Handler onError = nullptr);
  protected:
   void m_getPowerUsage();
   void m_getCapabilities();
   void m_getStatus();
   void m_setStatus(StatusData status);
+  void m_flushPendingControl();
   void m_displayToggle();
   ResponseStatus m_readStatus(FrameData data);
   Capabilities m_capabilities{};
@@ -59,6 +72,11 @@ class AirConditioner : public ApplianceBase {
   Preset m_lastPreset{Preset::PRESET_NONE};
   StatusData m_status{};
   bool m_sendControl{};
+  bool m_powerQuery{true};
+  bool m_applianceError{};
+  uint8_t m_errorCode{};
+  bool m_filterAlert{};
+  Control m_pendingControl{};
 };
 
 }  // namespace ac

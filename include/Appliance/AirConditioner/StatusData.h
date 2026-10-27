@@ -113,6 +113,13 @@ class StatusData : public FrameData {
   }
 
   bool isFahrenheits() const { return this->m_getValue(10, 4); }
+
+  /* APPLIANCE ERROR FLAG */
+  bool getApplianceError() const { return this->m_getValue(1, 0x80); }
+  /* FAULT CODE (0 = none) */
+  uint8_t getErrorCode() const { return this->m_getValue(16); }
+  /* FILTER CLEANING REMINDER */
+  bool getFilterAlert() const { return this->m_getValue(13, 0x20); }
   void setFahrenheits(bool state) { this->m_setMask(10, state, 4); }
 
  protected:
@@ -142,6 +149,16 @@ class QueryStateData : public FrameData {
   QueryStateData() : FrameData({0x41, 0x81, 0x00, 0xFF, 0x03, 0xFF, 0x00, 0x02, 0x00, 0x00,
                                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                 0x03, FrameData::m_getID()}) { this->appendCRC(); }
+};
+
+// Engineering "group data" query (0xC1 reply), as used by Midea service tools.
+// Groups: 1 compressor/refrigerant circuit, 2 indoor fan, 5 humidity/outdoor fan/defrost,
+// 7 outdoor unit power. Support depends on the model.
+class QueryGroupData : public FrameData {
+ public:
+  QueryGroupData(uint8_t group) : FrameData({0x41, 0x21, 0x01, static_cast<uint8_t>(0x40 | group),
+                                             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) { this->appendCRC(); }
 };
 
 class QueryPowerData : public FrameData {
