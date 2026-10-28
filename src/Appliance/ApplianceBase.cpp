@@ -19,6 +19,15 @@ namespace midea {
 
 static const char *TAG = "ApplianceBase";
 
+ApplianceBase::~ApplianceBase() {
+  this->m_responseTimer.stop();
+  delete this->m_request;
+  while (!this->m_queue.empty()) {
+    delete this->m_queue.front();
+    this->m_queue.pop_front();
+  }
+}
+
 ResponseStatus ApplianceBase::Request::callHandler(const Frame &frame) {
   if (!frame.hasType(this->requestType))
     return ResponseStatus::RESPONSE_WRONG;

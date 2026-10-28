@@ -47,6 +47,7 @@ using OnStateCallback = std::function<void()>;
 class ApplianceBase {
  public:
   ApplianceBase(ApplianceType type) : m_appType(type) {}
+  virtual ~ApplianceBase();
   /// Setup
   void setup();
   /// Loop
