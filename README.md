@@ -1,6 +1,11 @@
 # MideaUART
 Arduino framework library for controlling Midea home appliances using the UART protocol.
 
+The air-conditioner implementation includes validated C0 state decoding, B5 capability
+discovery, opt-in C1 diagnostic groups, and generic B0/B1 property queries and writes. See
+[the air-conditioner protocol architecture](docs/air-conditioner-protocol.md) for the data
+model, safety rules, and integration contract.
+
 Control is possible with a custom dongle. You can make it yourself according to numerous instructions on the Internet, or you can buy a ready-made one in [Tindie Shop](https://www.tindie.com/products/24607/), thereby supporting me and my work.
 
 A far from complete list of supported brands:

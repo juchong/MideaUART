@@ -1,4 +1,5 @@
 #include "Appliance/AirConditioner/StatusData.h"
+#include <limits>
 
 namespace dudanov {
 namespace midea {
@@ -26,6 +27,8 @@ void StatusData::setTargetTemp(float temp) {
 }
 
 static float getTemp(int integer, int decimal, bool fahrenheits) {
+  if (integer == 0xFF)
+    return std::numeric_limits<float>::quiet_NaN();
   integer -= 50;
   if (!fahrenheits && decimal > 0)
     return static_cast<float>(integer / 2) + static_cast<float>(decimal) * ((integer >= 0) ? 0.1F : -0.1F);
@@ -36,6 +39,25 @@ static float getTemp(int integer, int decimal, bool fahrenheits) {
 float StatusData::getIndoorTemp() const { return getTemp(this->m_getValue(11), this->m_getValue(15, 15), this->isFahrenheits()); }
 float StatusData::getOutdoorTemp() const { return getTemp(this->m_getValue(12), this->m_getValue(15, 15, 4), this->isFahrenheits()); }
 float StatusData::getHumiditySetpoint() const { return static_cast<float>(this->m_getValue(19, 127)); }
+
+StatusData StatusData::toCommand() const {
+  StatusData command;
+  const Mode raw_mode = this->getRawMode();
+  command.setMode(raw_mode >= Mode::MODE_AUTO && raw_mode <= Mode::MODE_FAN_ONLY
+                      ? raw_mode
+                      : Mode::MODE_AUTO);
+  if (!this->m_getPower())
+    command.setMode(Mode::MODE_OFF);
+  command.setTargetTemp(this->getTargetTemp());
+  command.setFanMode(this->getFanMode());
+  command.setSwingMode(this->getSwingMode());
+  command.setPreset(this->getPreset());
+  command.setFahrenheits(this->isFahrenheits());
+  command.setPurifier(this->getPurifier());
+  command.setAuxHeat(this->getAuxHeat());
+  command.setTargetHumidity(this->getTargetHumidity());
+  return command;
+}
 
 Mode StatusData::getMode() const { return this->m_getPower() ? this->getRawMode() : Mode::MODE_OFF; }
 

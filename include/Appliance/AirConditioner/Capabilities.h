@@ -1,6 +1,6 @@
 #pragma once
 #include "Helpers/Platform.h"
-#include <set>
+#include <vector>
 
 namespace dudanov {
 namespace midea {
@@ -11,8 +11,17 @@ namespace ac {
 
 class Capabilities {
  public:
+  struct Record {
+    uint16_t id{};
+    std::vector<uint8_t> data{};
+  };
+
   // Read from frames
   bool read(const FrameData &data);
+  bool valid() const { return this->m_valid; }
+  bool has(uint16_t id) const;
+  const Record *get(uint16_t id) const;
+  const std::vector<Record> &records() const { return this->m_records; }
   // Dump capabilities
   void dump() const;
 
@@ -71,7 +80,17 @@ class Capabilities {
   // Ability to turn LED display off
   bool supportLightControl() const { return this->m_lightControl; }
 
+  bool supportAnion() const { return this->has(0x021E); }
+  bool supportFilterReminder() const { return this->has(0x0217); }
+  bool supportRateSelect() const { return this->has(0x0048); }
+  bool supportFreshAir() const { return this->has(0x004B); }
+  bool supportCascade() const { return this->has(0x0059); }
+  bool supportOutdoorSilent() const { return this->has(0x00CD); }
+  bool supportIEco() const { return this->has(0x00E3); }
+
  protected:
+  bool m_valid{};
+  std::vector<Record> m_records{};
   bool m_updownFan{false};
   bool m_leftrightFan{false};
   bool m_autoMode{false};

@@ -2,8 +2,6 @@
 #include "Helpers/Platform.h"
 #include <vector>
 
-class IPAddress;
-
 namespace dudanov {
 namespace midea {
 
@@ -17,15 +15,31 @@ class FrameData {
   template<typename T> T to() { return std::move(*this); }
   const uint8_t *data() const { return this->m_data.data(); }
   uint8_t size() const { return this->m_data.size(); }
-  bool hasID(uint8_t value) const { return this->m_data[0] == value; }
-  bool hasStatus() const { return this->hasID(0xC0); }
-  bool hasPowerInfo() const { return this->hasID(0xC1); }
+  bool empty() const { return this->m_data.empty(); }
+  bool hasIndex(uint8_t index) const { return index < this->m_data.size(); }
+  uint8_t at(uint8_t index, uint8_t fallback = 0) const {
+    return this->hasIndex(index) ? this->m_data[index] : fallback;
+  }
+  bool hasID(uint8_t value) const { return !this->m_data.empty() && this->m_data[0] == value; }
+  bool hasStatus() const {
+    return this->m_data.size() >= 17 && this->hasID(0xC0) && this->hasValidIntegrity();
+  }
+  bool hasPowerInfo() const { return this->hasID(0xC1) && this->hasValidIntegrity(); }
   void appendCRC() { this->m_data.push_back(this->m_calcCRC()); }
   void updateCRC() {
     this->m_data.pop_back();
     this->appendCRC();
   }
-  bool hasValidCRC() const { return !this->m_calcCRC(); }
+  bool hasValidCRC() const { return !this->m_data.empty() && !this->m_calcCRC(); }
+  bool hasValidChecksum() const {
+    if (this->m_data.empty())
+      return false;
+    uint8_t sum = 0;
+    for (uint8_t value : this->m_data)
+      sum += value;
+    return sum == 0;
+  }
+  bool hasValidIntegrity() const { return this->hasValidCRC() || this->hasValidChecksum(); }
  protected:
   std::vector<uint8_t> m_data;
   static uint8_t m_id;

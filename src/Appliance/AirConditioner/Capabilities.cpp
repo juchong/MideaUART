@@ -1,6 +1,7 @@
 #include "Appliance/AirConditioner/Capabilities.h"
 #include "Frame/FrameData.h"
 #include "Helpers/Log.h"
+#include <algorithm>
 
 namespace dudanov {
 namespace midea {
@@ -48,7 +49,10 @@ class CapabilityData {
   // Get size of capability data
   uint8_t size() const { return this->m_it[2]; }
   // 
-  bool isValid() const { return m_num && this->m_available() >= 3; }
+  bool isValid() const {
+    return m_num && this->m_available() >= 3 && this->size() <= this->m_available() - 3;
+  }
+  bool isMalformed() const { return m_num && !this->isValid(); }
   // One more request needed
   bool isNeedMore() const { return this->m_available() == 2 && *this->m_it != 0; }
   // Advance to next capability
@@ -67,14 +71,27 @@ class CapabilityData {
 };
 
 bool Capabilities::read(const FrameData &frame) {
-  if (frame.size() < 14)
+  this->m_valid = false;
+  if (frame.size() < 4 || !frame.hasID(0xB5) || !frame.hasValidIntegrity())
+    return false;
+
+  CapabilityData validation(frame);
+  while (validation.isValid())
+    validation.advance();
+  if (validation.isMalformed())
     return false;
 
   CapabilityData cap(frame);
+  std::vector<Record> parsed_records;
 
   for (; cap.isValid(); cap.advance()) {
     if (!cap.size())
       continue;
+    Record record;
+    record.id = static_cast<uint16_t>(cap.id());
+    for (uint8_t index = 0; index < cap.size(); ++index)
+      record.data.push_back(cap[index]);
+    parsed_records.push_back(std::move(record));
     const uint8_t uval = cap[0];
     const bool bval = uval;
     switch (cap.id()) {
@@ -264,11 +281,38 @@ bool Capabilities::read(const FrameData &frame) {
     }
   }
 
+  if (cap.isMalformed())
+    return false;
+
+  for (auto &record : parsed_records) {
+    auto existing = std::find_if(this->m_records.begin(), this->m_records.end(),
+                                 [&record](const Record &item) { return item.id == record.id; });
+    if (existing == this->m_records.end())
+      this->m_records.push_back(std::move(record));
+    else
+      *existing = std::move(record);
+  }
+
+  this->m_valid = true;
+
   // Как минимум указывает на предпоследний элемент (минимум 2 непрочитанных байта)
   if (cap.isNeedMore())
     return true; // если предпоследний байт != 0, то нужно опрашивать дальше
 
   return false;
+}
+
+const Capabilities::Record *Capabilities::get(uint16_t id) const {
+  auto record = std::find_if(this->m_records.begin(), this->m_records.end(),
+                             [id](const Record &item) { return item.id == id; });
+  return record == this->m_records.end() ? nullptr : &*record;
+}
+
+bool Capabilities::has(uint16_t id) const {
+  const Record *record = this->get(id);
+  if (record == nullptr || record->data.empty())
+    return false;
+  return std::any_of(record->data.begin(), record->data.end(), [](uint8_t value) { return value != 0; });
 }
 
 #define LOG_CAPABILITY(str, condition) \

@@ -71,8 +71,9 @@ class StatusData : public FrameData {
                             0x00, 0x00, 0x00, 0x00}) {}
   StatusData(const FrameData &data) : FrameData(data) {}
 
-  /// Copy status from another StatusData
-  void copyStatus(const StatusData &p) { memcpy(this->m_data.data() + 1, p.data() + 1, 10); }
+  /// Copy all safely writable state from a confirmed status response.
+  void copyStatus(const StatusData &status) { *this = status.toCommand(); }
+  StatusData toCommand() const;
 
   /* TARGET TEMPERATURE */
   float getTargetTemp() const;
@@ -99,6 +100,8 @@ class StatusData : public FrameData {
 
   /* HUMIDITY SETPOINT */
   float getHumiditySetpoint() const;
+  uint8_t getTargetHumidity() const { return this->m_getValue(19, 0x7F); }
+  void setTargetHumidity(uint8_t humidity) { this->m_setValue(19, humidity, 0x7F); }
 
   /* PRESET */
   Preset getPreset() const;
@@ -107,12 +110,29 @@ class StatusData : public FrameData {
   /* POWER USAGE */
   float getPowerUsage() const;
 
+  /* DIAGNOSTICS AND AUXILIARY STATE */
+  bool getApplianceError() const { return this->m_getValue(1, 0x80); }
+  uint8_t getErrorCode() const { return this->m_getValue(16); }
+  bool getFilterAlert() const { return this->m_getValue(13, 0x20); }
+  uint8_t getDisplayLevel() const { return this->m_getValue(14, 0x07, 4); }
+  bool getDisplayOn() const { return this->getDisplayLevel() != 7; }
+  bool getFollowMe() const { return this->m_getValue(8, 0x80); }
+  bool getPurifier() const { return this->m_getValue(9, 0x20); }
+  void setPurifier(bool state) { this->m_setMask(9, state, 0x20); }
+  bool getAuxHeat() const { return this->m_getValue(9, 0x08); }
+  void setAuxHeat(bool state) { this->m_setMask(9, state, 0x08); }
+  bool getIndependentAuxHeat() const { return this->m_getValue(8, 0x40); }
+  bool getPowerSaving() const { return this->m_getValue(8, 0x08); }
+  bool getNaturalWind() const { return this->m_getValue(10, 0x40); }
+  bool getComfortMode() const { return this->m_getValue(14, 0x01); }
+
   void setBeeper(bool state) {
     this->m_setMask(1, true, 2);
     this->m_setMask(1, state, 64);
   }
 
   bool isFahrenheits() const { return this->m_getValue(10, 4); }
+  bool isFahrenheit() const { return this->isFahrenheits(); }
   void setFahrenheits(bool state) { this->m_setMask(10, state, 4); }
 
  protected:
