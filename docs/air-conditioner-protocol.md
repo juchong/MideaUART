@@ -77,8 +77,16 @@ remained zero. That supports a model-specific *candidate* predicate of
 
 Normal operation later showed the same Office combination while both Home Assistant climate
 entities were in Heat/Cool. Because a head in automatic mode can still internally choose an
-ambient mode, that observation neither proves nor disproves a conflict. The library therefore
-does not expose an “opposing mode disabled” state.
+ambient mode, that observation alone neither proved nor disproved a conflict.
+
+A subsequent isolated-head test kept Office at the same Heat/Cool mode, target, fan, preset and
+swing while turning only Loft off. Office's `appliance_error && error_code == 0` combination
+cleared on the next C0 cycle and the room immediately cooled from 26.5 C toward its 21 C target.
+Restoring Loft's exact prior state did not reassert the flag while both heads' ambient demand was
+compatible. This controlled reversal makes the predicate a useful inhibit signal on these two
+MRCOOL heads. The library still does not expose a generic “opposing mode disabled” state because
+the bit's cross-model meaning is not established; the ESPHome deployment derives and explicitly
+labels the model-specific candidate instead.
 
 Error byte 16 also briefly reported decimal `25`. The independent older parser maps code 25
 to heating/cold-wind protection. It is not a conflict code in this implementation.
@@ -133,6 +141,14 @@ day/hour/minute/second interpretation produced impossible values (including more
 operating hours), so those typed fields were removed and the payload remains raw. Groups 5 and
 7 did not reply during the complete bounded sweep. Group 4 was deliberately not queried because
 its device-specific energy encoding had not been established.
+
+The different-capacity Office head was then qualified separately. It answered C0 and the two
+MRCOOL-qualified B1 properties, but returned no C1 group while both shared-system heads were
+enabled. Loft was turned off and Office's inhibit flag cleared; Office actively cooled for more
+than a complete diagnostic sweep, but still returned no C1 group. C1 support is therefore a
+per-head capability on this installation: live Groups 1–3 are qualified for Loft only, while
+Office's unanswered groups remain unknown. An absent C1 reply does not invalidate C0 control or
+B1 support.
 
 ## B0/B1 properties
 
