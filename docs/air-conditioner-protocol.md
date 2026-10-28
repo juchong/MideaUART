@@ -102,7 +102,12 @@ callers must not treat mere record presence or a nonzero byte as generic proof o
 
 ## C1 groups
 
-The exact query body is `41 21 01 (40 | group) 00 01 CRC`. It contains no message ID.
+The exact query body is `41 21 01 (40 | group)`, followed by sixteen zero bytes and the CRC
+(21 bytes total). It contains no message ID. A seven-byte form from an external protocol capture
+was rejected after repeated live Loft polls produced no C1 replies while C0 and B1 traffic
+continued normally. The 20-byte request body is the form that produced the live Group 1, 2 and 3
+qualification data below. Every supported group selector and all sixteen padding bytes are
+regression-tested.
 
 | Group | Typed fields | Evidence |
 |---:|---|---|
@@ -120,8 +125,8 @@ Group 11 louver angles were removed because no captured fixture or maintained co
 implementation established those meanings. `GroupData::raw_payload` retains every byte after
 the four-byte C1 header for future qualification.
 
-The repository contains an exact Group 4 query frame from an external protocol source. During
-a 2026-10-27 Loft MRCOOL qualification, Groups 1, 2 and 3 returned plausible idle-state values:
+During a 2026-10-27 Loft MRCOOL qualification using the 20-byte request body, Groups 1, 2 and 3
+returned plausible idle-state values:
 241 V compressor supply, 23.0 C indoor coil, 15.5 C outdoor coil, 20 C discharge pipe, and zero
 target/actual fan and compressor speeds. Group 0 also replied, but its former five-byte
 day/hour/minute/second interpretation produced impossible values (including more than 879,000

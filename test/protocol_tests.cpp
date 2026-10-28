@@ -425,12 +425,19 @@ static void testConfirmedStateControl() {
 }
 
 static void testGroupQueryWireFormat() {
-  QueryGroupData query{GroupId::ENERGY};
-  const std::array<uint8_t, 7> captured_energy_query{0x41, 0x21, 0x01, 0x44, 0x00, 0x01, 0x09};
-  assert(query.size() == captured_energy_query.size());
-  for (uint8_t index = 0; index < captured_energy_query.size(); ++index)
-    assert(query.at(index) == captured_energy_query[index]);
-  assert(query.hasValidCRC());
+  for (const auto group : {GroupId::RUNTIME, GroupId::PERFORMANCE, GroupId::INDOOR_FAN,
+                           GroupId::OUTDOOR_FAN, GroupId::ENERGY, GroupId::ENVIRONMENT,
+                           GroupId::OUTDOOR_POWER, GroupId::LOUVERS}) {
+    QueryGroupData query{group};
+    assert(query.size() == 21);
+    assert(query.at(0) == 0x41);
+    assert(query.at(1) == 0x21);
+    assert(query.at(2) == 0x01);
+    assert(query.at(3) == static_cast<uint8_t>(0x40 | static_cast<uint8_t>(group)));
+    for (uint8_t index = 4; index < 20; ++index)
+      assert(query.at(index) == 0x00);
+    assert(query.hasValidCRC());
+  }
 }
 
 int main() {
