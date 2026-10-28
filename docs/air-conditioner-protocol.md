@@ -69,6 +69,23 @@ firmware advertises property `0x021E` while ignoring a B0 write to that property
 | 22 | comfort mode | `0x01`; the previous byte-14 mapping was incorrect |
 | 24–27 | fresh-filter total/used counters | Big-endian raw counters; units are not asserted |
 
+### Model-qualified multi-head mode-conflict observation
+
+A controlled 2026-10-27 test on a two-head MRCOOL system qualified byte 1 bit `0x80` for
+that installation. With both heads calling for heat, the instrumented Loft head reported
+`appliance_error=false`. Office was then held in heat while Loft was changed to cool with a
+setpoint below room temperature. Within about 13 seconds Loft reported
+`appliance_error=true`, its numeric `error_code` remained zero, and every other exposed C0
+diagnostic remained unchanged. Returning both heads to heat/cool cleared the flag on the next
+status cycle.
+
+This is strong model-qualified evidence that `appliance_error && error_code == 0` represents
+an indoor head denied by the shared outdoor unit's opposing ambient mode on this MRCOOL
+system. The generic field remains named `appliance_error`: independent implementations call
+the same bit `inError`, and other appliances or genuine faults may use it more broadly. A
+consumer may expose a device-specific mode-conflict entity after qualifying the same behavior;
+the library must not relabel the bit globally.
+
 ## B5 capabilities
 
 B5 values are not generic booleans. Each known capability uses its own value set. The decoder
