@@ -304,11 +304,24 @@ static void testConfirmedStateControl() {
   assert(near(command.getTargetTemp(), 25.0F));
 }
 
+static void testGroupQueryWireFormat() {
+  QueryGroupData query{GroupId::PERFORMANCE};
+  assert(query.size() == 21);
+  assert(query.at(0) == 0x41);
+  assert(query.at(1) == 0x21);
+  assert(query.at(2) == 0x01);
+  assert(query.at(3) == 0x41);
+  for (uint8_t index = 4; index < 20; ++index)
+    assert(query.at(index) == 0x00);
+  assert(query.hasValidCRC());
+}
+
 int main() {
   testStatusValidation();
   testGroupDecoding();
   testProperties();
   testCapabilities();
   testConfirmedStateControl();
-  std::puts("PASS: status, groups, properties, capabilities, and confirmed-state control");
+  testGroupQueryWireFormat();
+  std::puts("PASS: status, groups, properties, capabilities, confirmed-state control, and C1 wire format");
 }
