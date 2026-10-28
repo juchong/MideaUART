@@ -79,6 +79,11 @@ setpoint below room temperature. Within about 13 seconds Loft reported
 diagnostic remained unchanged. Returning both heads to heat/cool cleared the flag on the next
 status cycle.
 
+The numeric error byte also produced isolated `25` then `0` transitions before the bounded
+cycle and as the conflict cleared. It was not stable while the head was denied and is not
+qualified as a mode-conflict code. The model-specific predicate therefore uses the sustained
+zero value only to distinguish this observation from a conventional nonzero fault code.
+
 This is strong model-qualified evidence that `appliance_error && error_code == 0` represents
 an indoor head denied by the shared outdoor unit's opposing ambient mode on this MRCOOL
 system. The generic field remains named `appliance_error`: independent implementations call
