@@ -229,9 +229,9 @@ static void testGroupDecoding() {
                           0, 2, 0, 0, 0,
                           0, 0, 1, 15, 0});
   assert(decodeGroupData(runtime, GroupId::RUNTIME, PowerFormat::BCD, decoded));
-  assert(near(decoded.runtime.electrified_hours, 26.5F));
-  assert(near(decoded.runtime.total_operating_hours, 48.0F));
-  assert(near(decoded.runtime.current_operating_hours, 1.25F));
+  assert(decoded.raw_payload.size() == 15);
+  assert(decoded.raw_payload[0] == 0x00 && decoded.raw_payload[1] == 0x01);
+  assert(decoded.raw_payload[12] == 0x01 && decoded.raw_payload[13] == 0x0F);
 
   auto outdoor_fan = withCrc({0xC1, 0x21, 0x01, 0x43, 0, 0, 0, 0, 0, 0, 75});
   assert(decodeGroupData(outdoor_fan, GroupId::OUTDOOR_FAN, PowerFormat::BCD, decoded));

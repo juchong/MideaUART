@@ -59,9 +59,6 @@ struct AirConditionerState {
   Optional<uint16_t> fresh_filter_total{};
   Optional<uint16_t> fresh_filter_used{};
   Optional<bool> fahrenheit{};
-  Optional<float> electrified_hours{};
-  Optional<float> total_operating_hours{};
-  Optional<float> current_operating_hours{};
   Optional<float> realtime_power{};
   Optional<float> total_energy{};
   Optional<float> total_operating_energy{};

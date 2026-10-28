@@ -515,11 +515,6 @@ void AirConditioner::m_applyGroup(const GroupData &data) {
   bool changed = false;
   switch (data.group) {
     case GroupId::RUNTIME:
-      changed |= updateFloat(this->m_state.electrified_hours, data.runtime.electrified_hours);
-      changed |= updateFloat(this->m_state.total_operating_hours,
-                             data.runtime.total_operating_hours);
-      changed |= updateFloat(this->m_state.current_operating_hours,
-                             data.runtime.current_operating_hours);
       break;
     case GroupId::PERFORMANCE:
       changed |= updateOptional(this->m_state.compressor_frequency,

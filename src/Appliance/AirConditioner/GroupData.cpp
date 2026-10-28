@@ -27,20 +27,8 @@ static uint8_t minimumSize(GroupId group) {
   return 0xFF;
 }
 
-static uint16_t readU16BE(const uint8_t *data) {
-  return static_cast<uint16_t>((static_cast<uint16_t>(data[0]) << 8) | data[1]);
-}
-
 static uint16_t readU16LE(const uint8_t *data) {
   return static_cast<uint16_t>(data[0] | (static_cast<uint16_t>(data[1]) << 8));
-}
-
-static float hours(const uint8_t *data) {
-  const uint32_t seconds =
-      (static_cast<uint32_t>(readU16BE(data)) * 24UL * 60UL * 60UL) +
-      (static_cast<uint32_t>(data[2]) * 60UL * 60UL) +
-      (static_cast<uint32_t>(data[3]) * 60UL) + data[4];
-  return static_cast<float>(seconds) / 3600.0F;
 }
 
 static uint8_t bcd(uint8_t value) {
@@ -92,9 +80,9 @@ bool decodeGroupData(const FrameData &frame, GroupId expected_group, PowerFormat
   result.raw_payload.assign(data + 4, data + frame.size() - 1);
   switch (expected_group) {
     case GroupId::RUNTIME:
-      result.runtime.electrified_hours = hours(data + 4);
-      result.runtime.total_operating_hours = hours(data + 9);
-      result.runtime.current_operating_hours = hours(data + 14);
+      // The Group 0 payload is preserved for device-specific analysis. A
+      // five-byte day/hour/minute/second interpretation produced impossible
+      // values on live MRCOOL heads and is therefore not part of the typed API.
       return true;
     case GroupId::PERFORMANCE:
       result.performance.compressor_frequency = data[4];

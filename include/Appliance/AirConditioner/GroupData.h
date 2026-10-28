@@ -27,12 +27,6 @@ enum class PowerFormat : uint8_t {
   BCD_ENERGY_BINARY_POWER = 101,
 };
 
-struct RuntimeData {
-  float electrified_hours{};
-  float total_operating_hours{};
-  float current_operating_hours{};
-};
-
 struct PerformanceData {
   uint8_t compressor_frequency{};
   uint8_t target_compressor_frequency{};
@@ -75,7 +69,6 @@ struct GroupData {
   /// Bytes after the four-byte C1 group header, excluding the integrity byte.
   /// Preserved for groups and fields whose semantics are not established.
   std::vector<uint8_t> raw_payload{};
-  RuntimeData runtime{};
   PerformanceData performance{};
   IndoorFanData indoor_fan{};
   OutdoorFanData outdoor_fan{};

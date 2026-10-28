@@ -28,7 +28,7 @@ a byte has the semantic name assigned to it. The test suite uses those terms sep
 |---|---|---|
 | `C0` status / `0x40` control | Core climate state plus selected diagnostics | Core climate fields have captured fixtures; extended fields are classified below |
 | `B5` capabilities | Lossless records plus typed known values | Most typed values match maintained `midea-local`; inherited-only accessors are identified below |
-| `C1` groups | Groups 0, 1, 2, 3, 4, 5, 7 and raw group 11 | Typed subset matches maintained `midea-local`; every accepted payload is also retained raw |
+| `C1` groups | Groups 0, 1, 2, 3, 4, 5, 7 and raw group 11 | Typed subset matches maintained `midea-local`, except Group 0 which is raw-only after live rejection; every accepted payload is retained raw |
 | `B0` / `B1` properties | Lossless records, query/write builders and a corroborated typed subset | The fixed response byte is preserved as `reserved`; it has no inferred success meaning |
 | `A0` / `A1` | Not decoded or emitted | Needs UART fixtures and model routing |
 | `BB` | Not decoded or emitted | Model/subtype-specific; needs fixtures and routing |
@@ -106,7 +106,7 @@ The exact query body is `41 21 01 (40 | group) 00 01 CRC`. It contains no messag
 
 | Group | Typed fields | Evidence |
 |---:|---|---|
-| 0 | Electrified, total-operating and current-operating hours | Corroborated |
+| 0 | No typed fields | Raw preservation only; the former five-byte time interpretation was rejected by live MRCOOL output |
 | 1 | Compressor frequency/target/current/voltage, T1/T2/T3/T4, discharge temperature | Corroborated |
 | 2 | Indoor-fan target/actual RPM and condensate-pump bit | Corroborated |
 | 3 | Outdoor-fan RPM | Corroborated |
@@ -120,9 +120,14 @@ Group 11 louver angles were removed because no captured fixture or maintained co
 implementation established those meanings. `GroupData::raw_payload` retains every byte after
 the four-byte C1 header for future qualification.
 
-The repository contains an exact Group 4 query frame from an external protocol source. Neither
-MRCOOL head returned a valid C1 response during the bounded test, so no C1 field is described as
-MRCOOL-validated.
+The repository contains an exact Group 4 query frame from an external protocol source. During
+a 2026-10-27 Loft MRCOOL qualification, Groups 1, 2 and 3 returned plausible idle-state values:
+241 V compressor supply, 23.0 C indoor coil, 15.5 C outdoor coil, 20 C discharge pipe, and zero
+target/actual fan and compressor speeds. Group 0 also replied, but its former five-byte
+day/hour/minute/second interpretation produced impossible values (including more than 879,000
+operating hours), so those typed fields were removed and the payload remains raw. Groups 5 and
+7 did not reply during the complete bounded sweep. Group 4 was deliberately not queried because
+its device-specific energy encoding had not been established.
 
 ## B0/B1 properties
 
@@ -152,6 +157,11 @@ The typed response subset is limited to meanings corroborated by maintained `mid
 
 `0x001A` prompt tone is retained as a typed writer/reader because the maintained implementation
 emits the same boolean encoding, but it is not part of that implementation's default query set.
+
+The same Loft qualification received valid values only for display state (`0x0017`) and
+horizontal louver angle (`0x000A`). The other configured property queries completed a full sweep
+without a response and therefore remain available protocol vocabulary, not MRCOOL-validated
+telemetry.
 
 All other known tag IDs are vocabulary and raw records only. In particular, `0x0050` water
 pump, `0x0059` wind-around, `0x0067` and `0x00E3` do not create typed state. The latter two use
