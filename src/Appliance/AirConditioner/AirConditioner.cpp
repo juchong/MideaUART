@@ -569,7 +569,7 @@ void AirConditioner::m_applyProperties(const std::vector<PropertyValue> &propert
       case PropertyId::INDOOR_HUMIDITY:
         changed |= updateOptional(this->m_state.indoor_humidity, value);
         break;
-      case PropertyId::DISPLAY:
+      case PropertyId::DISPLAY_CONTROL:
         changed |= updateOptional(this->m_state.display_on, value != 0);
         changed |= updateOptional(this->m_state.display_level, value);
         break;
