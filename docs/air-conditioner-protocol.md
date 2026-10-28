@@ -34,6 +34,10 @@ every successfully framed property, including IDs without a typed state mapping.
 
 ## C1 groups
 
+The on-wire group query is the captured short form `41 21 01 (40 | group) 00 01 CRC`.
+It deliberately has no message ID and must not be padded to the length of the legacy status
+query. The exact known group-4 capture (`41 21 01 44 00 01 09`) is regression-tested.
+
 Group polling is consumer-driven through `requestGroup()`. Only the legacy energy query is
 enabled by default; integrations should request additional groups only when at least one
 configured entity consumes their data.
