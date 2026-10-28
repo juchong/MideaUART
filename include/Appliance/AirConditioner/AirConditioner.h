@@ -45,10 +45,19 @@ struct AirConditionerState {
   Optional<bool> follow_me{};
   Optional<bool> purifier{};
   Optional<bool> aux_heat{};
-  Optional<bool> independent_aux_heat{};
   Optional<bool> power_saving{};
+  Optional<bool> smart_eye{};
   Optional<bool> natural_wind{};
+  Optional<bool> dry{};
+  Optional<bool> eco_mode{};
+  Optional<bool> sleep_mode{};
+  Optional<bool> prevent_cold{};
+  Optional<float> pmv{};
+  Optional<bool> frost_protection{};
   Optional<bool> comfort_mode{};
+  Optional<bool> fresh_filter_timeout{};
+  Optional<uint16_t> fresh_filter_total{};
+  Optional<uint16_t> fresh_filter_used{};
   Optional<bool> fahrenheit{};
   Optional<bool> defrosting{};
   Optional<float> electrified_hours{};
@@ -129,6 +138,8 @@ class AirConditioner : public ApplianceBase {
   const AirConditionerState &getState() const { return this->m_state; }
   const CommunicationDiagnostics &getDiagnostics() const { return this->m_diagnostics; }
   const Capabilities &getCapabilities() const { return this->m_capabilities; }
+  const std::vector<PropertyValue> &getProperties() const { return this->m_properties; }
+  const PropertyValue *getProperty(uint16_t id) const;
   void setPowerQuery(bool state) { this->m_powerQuery = state; }
   void setPowerFormat(PowerFormat format) { this->m_powerFormat = format; }
   void displayToggle() { this->m_displayToggle(); }
@@ -143,6 +154,7 @@ class AirConditioner : public ApplianceBase {
   void m_applyGroup(const GroupData &data);
   void m_applyProperties(const std::vector<PropertyValue> &properties);
   Capabilities m_capabilities{};
+  std::vector<PropertyValue> m_properties{};
   Timer m_powerUsageTimer;
   AirConditionerState m_state{};
   CommunicationDiagnostics m_diagnostics{};

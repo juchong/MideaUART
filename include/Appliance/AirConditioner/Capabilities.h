@@ -19,6 +19,7 @@ class Capabilities {
   // Read from frames
   bool read(const FrameData &data);
   bool valid() const { return this->m_valid; }
+  bool reported(uint16_t id) const;
   bool has(uint16_t id) const;
   const Record *get(uint16_t id) const;
   const std::vector<Record> &records() const { return this->m_records; }
@@ -36,18 +37,13 @@ class Capabilities {
   bool indoorHumidity() const { return this->m_indoorHumidity; }
   // Control humidity
   bool manualSetHumidity() const { return this->m_manualSetHumidity; }
-  bool nestCheck() const { return this->m_nestCheck; }
-  bool nestNeedChange() const { return this->m_nestNeedChange; }
   bool oneKeyNoWindOnMe() const { return this->m_oneKeyNoWindOnMe; }
   bool powerCal() const { return this->m_powerCal; }
   bool powerCalSetting() const { return this->m_powerCalSetting; }
+  bool energyBcd() const { return this->m_energyBcd; }
   bool silkyCool() const { return this->m_silkyCool; }
-  // Intelligent eye function
-  bool smartEye() const { return this->m_smartEye; }
   // Temperature unit can be changed between Celsius and Fahrenheit
   bool unitChangeable() const { return this->m_unitChangeable; }
-  bool windOfMe() const { return this->m_windOfMe; }
-  bool windOnMe() const { return this->m_windOnMe; }
   
   /* MODES */
 
@@ -68,6 +64,15 @@ class Capabilities {
   bool supportHorizontalSwing() const { return this->m_leftrightFan; }
   bool supportBothSwing() const { return this->m_updownFan && this->m_leftrightFan; }
 
+  /* FAN MODES */
+
+  bool supportSilentFan() const { return this->m_fanSilent; }
+  bool supportLowFan() const { return this->m_fanLow; }
+  bool supportMediumFan() const { return this->m_fanMedium; }
+  bool supportHighFan() const { return this->m_fanHigh; }
+  bool supportAutoFan() const { return this->m_fanAuto; }
+  bool supportCustomFan() const { return this->m_fanCustom; }
+
   /* TEMPERATURES */
 
   float maxTempAuto() const { return this->m_maxTempAuto; }
@@ -80,9 +85,14 @@ class Capabilities {
   // Ability to turn LED display off
   bool supportLightControl() const { return this->m_lightControl; }
 
-  bool supportAnion() const { return this->has(0x021E); }
-  bool supportFilterReminder() const { return this->has(0x0217); }
-  bool supportRateSelect() const { return this->has(0x0048); }
+  bool supportAnion() const { return this->m_anion; }
+  bool supportFilterReminder() const { return this->m_filterReminder; }
+  bool supportRateSelect() const { return this->m_rateSelect; }
+  bool supportRateSelect2Level() const { return this->m_rateSelect2Level; }
+  bool supportRateSelect5Level() const { return this->m_rateSelect5Level; }
+  bool supportEnergyStats() const { return this->m_powerCal; }
+  bool supportEnergySetting() const { return this->m_powerCalSetting; }
+  bool supportSound() const { return this->m_sound; }
   bool supportFreshAir() const { return this->has(0x004B); }
   bool supportCascade() const { return this->has(0x0059); }
   bool supportOutdoorSilent() const { return this->has(0x00CD); }
@@ -109,6 +119,12 @@ class Capabilities {
   bool m_decimals{false};
   bool m_electricAuxHeating{false};
   bool m_fanSpeedControl{true};
+  bool m_fanSilent{true};
+  bool m_fanLow{true};
+  bool m_fanMedium{true};
+  bool m_fanHigh{true};
+  bool m_fanAuto{true};
+  bool m_fanCustom{false};
   bool m_indoorHumidity{false};
   bool m_lightControl{false};
   bool m_manualSetHumidity{false};
@@ -118,16 +134,18 @@ class Capabilities {
   float m_minTempAuto{17};
   float m_minTempCool{17};
   float m_minTempHeat{17};
-  bool m_nestCheck{false};
-  bool m_nestNeedChange{false};
   bool m_oneKeyNoWindOnMe{false};
   bool m_powerCal{false};
   bool m_powerCalSetting{false};
+  bool m_energyBcd{false};
+  bool m_anion{false};
+  bool m_filterReminder{false};
+  bool m_rateSelect{false};
+  bool m_rateSelect2Level{false};
+  bool m_rateSelect5Level{false};
+  bool m_sound{false};
   bool m_silkyCool{false};
-  bool m_smartEye{false};
   bool m_unitChangeable{false};
-  bool m_windOfMe{false};
-  bool m_windOnMe{false};
 };
 
 }  // namespace ac

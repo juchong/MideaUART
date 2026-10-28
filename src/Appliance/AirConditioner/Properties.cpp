@@ -63,7 +63,8 @@ SetPropertiesData::SetPropertiesData(const std::vector<PropertyWrite> &propertie
   this->appendCRC();
 }
 
-bool decodeProperties(const FrameData &frame, std::vector<PropertyValue> &properties) {
+bool decodeProperties(const FrameData &frame, std::vector<PropertyValue> &properties,
+                      uint8_t *message_id) {
   if (frame.size() < 4 || (frame.at(0) != 0xB0 && frame.at(0) != 0xB1) || !frame.hasValidIntegrity())
     return false;
 
@@ -84,7 +85,19 @@ bool decodeProperties(const FrameData &frame, std::vector<PropertyValue> &proper
     offset += length;
     properties.push_back(std::move(property));
   }
-  return true;
+  const uint8_t payload_end = static_cast<uint8_t>(frame.size() - 1U);
+  if (offset == payload_end) {
+    if (message_id != nullptr)
+      *message_id = 0;
+    return true;
+  }
+  if (static_cast<uint16_t>(offset) + 1U == payload_end) {
+    if (message_id != nullptr)
+      *message_id = frame.at(offset);
+    return true;
+  }
+  properties.clear();
+  return false;
 }
 
 }  // namespace ac

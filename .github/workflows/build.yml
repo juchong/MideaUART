@@ -1,5 +1,6 @@
 name: PlatformIO CI
 on:
+  push:
   workflow_dispatch:
   pull_request:
 
@@ -13,6 +14,8 @@ jobs:
           python-version: '3.11'
       - name: Run native protocol tests
         run: python test/run_protocol_tests.py
+      - name: Run native protocol tests with sanitizers
+        run: python test/run_protocol_tests.py --sanitize
 
   build:
     runs-on: ubuntu-latest

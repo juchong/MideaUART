@@ -49,6 +49,9 @@ class TestAirConditioner : public AirConditioner {
     return {this->m_status.data(), this->m_status.data() + this->m_status.size()};
   }
   bool controlPending() const { return this->m_sendControl; }
+  void applyProperties(const std::vector<PropertyValue> &properties) {
+    this->m_applyProperties(properties);
+  }
 };
 
 class FakeStream : public Stream {
@@ -127,6 +130,31 @@ static void testStatusValidation() {
   assert(std::isnan(device.getIndoorHum()));
 }
 
+static void testExtendedC0State() {
+  TestAirConditioner device;
+  auto frame = withCrc({
+      0xC0, 0x81, 0x4A, 0x66, 0x7F, 0x7F, 0x00, 0x00,
+      0x40, 0x3E, 0x25, 0x66, 0x6E, 0x60, 0x19, 0x00,
+      0x2A, 0x00, 0x00, 55, 0x00, 0x80, 0x01, 0x00,
+      0x02, 0x58, 0x00, 0x2A,
+  });
+  assert(device.parse(frame) == RESPONSE_OK);
+  const auto &state = device.getState();
+  assert(state.appliance_error.hasValue() && state.appliance_error.value());
+  assert(state.smart_eye.hasValue() && state.smart_eye.value());
+  assert(state.natural_wind.hasValue() && state.natural_wind.value());
+  assert(state.dry.hasValue() && state.dry.value());
+  assert(state.eco_mode.hasValue() && state.eco_mode.value());
+  assert(state.sleep_mode.hasValue() && state.sleep_mode.value());
+  assert(state.prevent_cold.hasValue() && state.prevent_cold.value());
+  assert(state.frost_protection.hasValue() && state.frost_protection.value());
+  assert(state.comfort_mode.hasValue() && state.comfort_mode.value());
+  assert(state.fresh_filter_timeout.hasValue() && state.fresh_filter_timeout.value());
+  assert(state.fresh_filter_total.hasValue() && state.fresh_filter_total.value() == 600);
+  assert(state.fresh_filter_used.hasValue() && state.fresh_filter_used.value() == 42);
+  assert(state.pmv.hasValue() && near(state.pmv.value(), 1.0F));
+}
+
 static std::vector<uint8_t> energyData(const std::vector<uint8_t> &total,
                                        const std::vector<uint8_t> &operating,
                                        const std::vector<uint8_t> &current,
@@ -184,8 +212,15 @@ static void testGroupDecoding() {
   assert(decodeGroupData(indoor_fan, GroupId::INDOOR_FAN, PowerFormat::BCD, decoded));
   assert(decoded.indoor_fan.target_speed == 400);
   assert(decoded.indoor_fan.actual_speed == 360);
+  assert(!decoded.indoor_fan.water_pump_running);
   assert(decoded.indoor_fan.fault_flags[2] == 0x04);
   assert(decoded.indoor_fan.protection_flags[2] == 0x20);
+
+  auto indoor_fan_pump = withCrc({0xC1, 0x21, 0x01, 0x42, 50, 45,
+                                  0x01, 0x02, 0x14, 0x08, 0x10, 0x20});
+  assert(decodeGroupData(indoor_fan_pump, GroupId::INDOOR_FAN,
+                         PowerFormat::BCD, decoded));
+  assert(decoded.indoor_fan.water_pump_running);
 
   auto runtime = withCrc({0xC1, 0x21, 0x01, 0x40,
                           0, 1, 2, 30, 0,
@@ -250,6 +285,22 @@ static void testProperties() {
 
   auto truncated = withCrc({0xB1, 0x01, 0x15, 0x00, 0x00, 0x03, 55});
   assert(!decodeProperties(truncated, properties));
+
+  auto with_message_id = withCrc({0xB1, 0x01, 0x15, 0x00, 0x00, 0x01, 48, 0x7B});
+  uint8_t message_id = 0;
+  assert(decodeProperties(with_message_id, properties, &message_id));
+  assert(message_id == 0x7B);
+
+  auto trailing_garbage = withCrc({0xB1, 0x01, 0x15, 0x00, 0x00, 0x01, 48, 1, 2});
+  assert(!decodeProperties(trailing_garbage, properties));
+
+  TestAirConditioner device;
+  device.applyProperties({PropertyValue{0x7777, 0x00, {1, 2, 3}},
+                          PropertyValue{0x8888, 0x10, {9}}});
+  const auto *unknown = device.getProperty(0x7777);
+  assert(unknown != nullptr && unknown->data.size() == 3 && unknown->data[2] == 3);
+  const auto *failed = device.getProperty(0x8888);
+  assert(failed != nullptr && !failed->successful() && failed->data[0] == 9);
 }
 
 static void testCapabilities() {
@@ -269,6 +320,55 @@ static void testCapabilities() {
   Capabilities broken;
   assert(!broken.read(malformed));
   assert(!broken.valid());
+
+  auto semantic_report = withCrc({
+      0xB5, 0x09,
+      0x14, 0x02, 0x01, 13,
+      0x15, 0x02, 0x01, 3,
+      0x10, 0x02, 0x01, 1,
+      0x16, 0x02, 0x01, 5,
+      0x48, 0x00, 0x01, 3,
+      0x24, 0x02, 0x01, 100,
+      0x1E, 0x02, 0x01, 1,
+      0x1F, 0x02, 0x01, 3,
+      0x2C, 0x02, 0x01, 1,
+  });
+  Capabilities semantic;
+  assert(!semantic.read(semantic_report));
+  assert(semantic.valid());
+  assert(semantic.supportAutoMode() && semantic.supportCoolMode());
+  assert(semantic.supportHeatMode() && semantic.supportDryMode());
+  assert(!semantic.supportVerticalSwing() && semantic.supportHorizontalSwing());
+  assert(semantic.supportCustomFan() && semantic.supportSilentFan());
+  assert(semantic.supportLowFan() && semantic.supportMediumFan());
+  assert(semantic.supportHighFan() && semantic.supportAutoFan());
+  assert(semantic.supportEnergyStats() && semantic.supportEnergySetting());
+  assert(!semantic.energyBcd());
+  assert(semantic.supportRateSelect2Level() && semantic.supportRateSelect5Level());
+  assert(semantic.supportLightControl() && semantic.supportAnion());
+  assert(semantic.manualSetHumidity() && !semantic.autoSetHumidity());
+  assert(semantic.supportSound());
+
+  auto heat_only_report = withCrc({0xB5, 0x02,
+                                   0x14, 0x02, 0x01, 10,
+                                   0x10, 0x02, 0x01, 3});
+  Capabilities heat_only;
+  assert(!heat_only.read(heat_only_report));
+  assert(heat_only.supportHeatMode() && !heat_only.supportCoolMode());
+  assert(!heat_only.supportDryMode() && !heat_only.supportAutoMode());
+  assert(!heat_only.supportSilentFan() && heat_only.supportLowFan());
+  assert(!heat_only.supportMediumFan() && heat_only.supportHighFan());
+  assert(!heat_only.supportAutoFan());
+
+  auto paginated = withCrc({0xB5, 0x00, 0x01, 0x00});
+  Capabilities page;
+  assert(page.read(paginated));
+  assert(page.valid());
+
+  auto excess_trailer = withCrc({0xB5, 0x00, 0x01, 0x00, 0x00});
+  Capabilities excess;
+  assert(!excess.read(excess_trailer));
+  assert(!excess.valid());
 }
 
 static void testConfirmedStateControl() {
@@ -315,6 +415,7 @@ static void testGroupQueryWireFormat() {
 
 int main() {
   testStatusValidation();
+  testExtendedC0State();
   testGroupDecoding();
   testProperties();
   testCapabilities();

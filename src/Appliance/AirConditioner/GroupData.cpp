@@ -109,6 +109,7 @@ bool decodeGroupData(const FrameData &frame, GroupId expected_group, PowerFormat
     case GroupId::INDOOR_FAN:
       result.indoor_fan.target_speed = static_cast<uint16_t>(data[4]) * 8U;
       result.indoor_fan.actual_speed = static_cast<uint16_t>(data[5]) * 8U;
+      result.indoor_fan.water_pump_running = (data[8] & 0x10) != 0;
       result.indoor_fan.fault_flags = {data[6], data[7], data[8]};
       result.indoor_fan.protection_flags = {data[9], data[10], data[11]};
       return true;

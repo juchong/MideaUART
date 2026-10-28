@@ -121,10 +121,25 @@ class StatusData : public FrameData {
   void setPurifier(bool state) { this->m_setMask(9, state, 0x20); }
   bool getAuxHeat() const { return this->m_getValue(9, 0x08); }
   void setAuxHeat(bool state) { this->m_setMask(9, state, 0x08); }
-  bool getIndependentAuxHeat() const { return this->m_getValue(8, 0x40); }
   bool getPowerSaving() const { return this->m_getValue(8, 0x08); }
-  bool getNaturalWind() const { return this->m_getValue(10, 0x40); }
-  bool getComfortMode() const { return this->m_getValue(14, 0x01); }
+  bool getSmartEye() const { return this->m_getValue(8, 0x40); }
+  bool getNaturalWind() const { return this->m_getValue(9, 0x02); }
+  bool getDry() const { return this->m_getValue(9, 0x04); }
+  bool getEco() const { return this->m_getValue(9, 0x10); }
+  bool getSleep() const { return this->m_getValue(10, 0x01); }
+  bool getPreventCold() const { return this->m_getValue(10, 0x20); }
+  float getPmv() const { return static_cast<float>(this->m_getValue(14, 0x0F)) * 0.5F - 3.5F; }
+  bool getFrostProtection() const { return this->m_getValue(21, 0x80); }
+  bool getComfortMode() const { return this->m_getValue(22, 0x01); }
+  bool getFreshFilterTimeout() const { return this->m_getValue(13, 0x40); }
+  uint16_t getFreshFilterTotal() const {
+    return static_cast<uint16_t>((static_cast<uint16_t>(this->m_getValue(24)) << 8) |
+                                 this->m_getValue(25));
+  }
+  uint16_t getFreshFilterUsed() const {
+    return static_cast<uint16_t>((static_cast<uint16_t>(this->m_getValue(26)) << 8) |
+                                 this->m_getValue(27));
+  }
 
   void setBeeper(bool state) {
     this->m_setMask(1, true, 2);

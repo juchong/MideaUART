@@ -48,6 +48,7 @@ struct PerformanceData {
 struct IndoorFanData {
   uint16_t target_speed{};
   uint16_t actual_speed{};
+  bool water_pump_running{};
   std::array<uint8_t, 3> fault_flags{};
   std::array<uint8_t, 3> protection_flags{};
 };
