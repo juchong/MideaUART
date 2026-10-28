@@ -1,6 +1,6 @@
 #pragma once
 
-#include <array>
+#include <vector>
 
 #include "Frame/FrameData.h"
 
@@ -49,8 +49,6 @@ struct IndoorFanData {
   uint16_t target_speed{};
   uint16_t actual_speed{};
   bool water_pump_running{};
-  std::array<uint8_t, 3> fault_flags{};
-  std::array<uint8_t, 3> protection_flags{};
 };
 
 struct OutdoorFanData {
@@ -66,21 +64,17 @@ struct EnergyData {
 
 struct EnvironmentData {
   uint8_t indoor_humidity{};
-  uint16_t outdoor_fan_speed{};
-  bool defrosting{};
 };
 
 struct OutdoorPowerData {
   uint16_t power_w{};
 };
 
-struct LouverData {
-  uint8_t horizontal_angle{};
-  uint8_t vertical_angle{};
-};
-
 struct GroupData {
   GroupId group{GroupId::RUNTIME};
+  /// Bytes after the four-byte C1 group header, excluding the integrity byte.
+  /// Preserved for groups and fields whose semantics are not established.
+  std::vector<uint8_t> raw_payload{};
   RuntimeData runtime{};
   PerformanceData performance{};
   IndoorFanData indoor_fan{};
@@ -88,7 +82,6 @@ struct GroupData {
   EnergyData energy{};
   EnvironmentData environment{};
   OutdoorPowerData outdoor_power{};
-  LouverData louvers{};
 };
 
 class QueryGroupData : public FrameData {

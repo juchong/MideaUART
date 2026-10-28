@@ -134,16 +134,18 @@ static void testExtendedC0State() {
   TestAirConditioner device;
   auto frame = withCrc({
       0xC0, 0x81, 0x4A, 0x66, 0x7F, 0x7F, 0x00, 0x00,
-      0x40, 0x3E, 0x25, 0x66, 0x6E, 0x60, 0x19, 0x00,
+      0xC0, 0x3E, 0x25, 0x66, 0x6E, 0x60, 0x19, 0x00,
       0x2A, 0x00, 0x00, 55, 0x00, 0x80, 0x01, 0x00,
       0x02, 0x58, 0x00, 0x2A,
   });
   assert(device.parse(frame) == RESPONSE_OK);
   const auto &state = device.getState();
   assert(state.appliance_error.hasValue() && state.appliance_error.value());
+  assert(state.c0_byte_8_bit_7.hasValue() && state.c0_byte_8_bit_7.value());
   assert(state.smart_eye.hasValue() && state.smart_eye.value());
   assert(state.natural_wind.hasValue() && state.natural_wind.value());
-  assert(state.dry.hasValue() && state.dry.value());
+  assert(state.c0_byte_9_bit_2.hasValue() && state.c0_byte_9_bit_2.value());
+  assert(state.c0_display_field.hasValue() && state.c0_display_field.value() == 1);
   assert(state.eco_mode.hasValue() && state.eco_mode.value());
   assert(state.sleep_mode.hasValue() && state.sleep_mode.value());
   assert(state.prevent_cold.hasValue() && state.prevent_cold.value());
@@ -213,8 +215,8 @@ static void testGroupDecoding() {
   assert(decoded.indoor_fan.target_speed == 400);
   assert(decoded.indoor_fan.actual_speed == 360);
   assert(!decoded.indoor_fan.water_pump_running);
-  assert(decoded.indoor_fan.fault_flags[2] == 0x04);
-  assert(decoded.indoor_fan.protection_flags[2] == 0x20);
+  assert(decoded.raw_payload.size() == 8);
+  assert(decoded.raw_payload[4] == 0x04 && decoded.raw_payload[7] == 0x20);
 
   auto indoor_fan_pump = withCrc({0xC1, 0x21, 0x01, 0x42, 50, 45,
                                   0x01, 0x02, 0x14, 0x08, 0x10, 0x20});
@@ -238,8 +240,8 @@ static void testGroupDecoding() {
   auto environment = withCrc({0xC1, 0x21, 0x01, 0x45, 48, 0, 0, 0, 60, 0, 1});
   assert(decodeGroupData(environment, GroupId::ENVIRONMENT, PowerFormat::BCD, decoded));
   assert(decoded.environment.indoor_humidity == 48);
-  assert(decoded.environment.outdoor_fan_speed == 480);
-  assert(decoded.environment.defrosting);
+  assert(decoded.raw_payload.size() == 7);
+  assert(decoded.raw_payload[4] == 60 && decoded.raw_payload[6] == 1);
 
   auto outdoor_power = withCrc({0xC1, 0x21, 0x01, 0x47, 0, 0, 0, 0, 0, 0, 0xD2, 0x04});
   assert(decodeGroupData(outdoor_power, GroupId::OUTDOOR_POWER, PowerFormat::BCD, decoded));
@@ -247,8 +249,8 @@ static void testGroupDecoding() {
 
   auto louvers = withCrc({0xC1, 0x21, 0x01, 0x4B, 0, 0, 0, 0, 0, 37, 0, 0, 82});
   assert(decodeGroupData(louvers, GroupId::LOUVERS, PowerFormat::BCD, decoded));
-  assert(decoded.louvers.horizontal_angle == 37);
-  assert(decoded.louvers.vertical_angle == 82);
+  assert(decoded.raw_payload.size() == 9);
+  assert(decoded.raw_payload[5] == 37 && decoded.raw_payload[8] == 82);
 
   auto corrupted = bcd_frame;
   std::vector<uint8_t> bad(corrupted.data(), corrupted.data() + corrupted.size());
@@ -260,7 +262,7 @@ static void testGroupDecoding() {
 
 static void testProperties() {
   QueryPropertiesData query({static_cast<uint16_t>(PropertyId::INDOOR_HUMIDITY),
-                             static_cast<uint16_t>(PropertyId::IECO)});
+                             static_cast<uint16_t>(PropertyId::UNKNOWN_00E3)});
   assert(query.hasValidCRC());
   assert(query.at(0) == 0xB1 && query.at(1) == 2);
   assert(query.at(2) == 0x15 && query.at(3) == 0x00);
@@ -280,7 +282,7 @@ static void testProperties() {
   assert(decodeProperties(response, properties));
   assert(properties.size() == 2);
   assert(properties[0].id == static_cast<uint16_t>(PropertyId::INDOOR_HUMIDITY));
-  assert(properties[0].successful() && properties[0].data[0] == 55);
+  assert(properties[0].reserved == 0 && properties[0].data[0] == 55);
   assert(properties[1].data.size() == 3 && properties[1].data[2] == 1);
 
   auto truncated = withCrc({0xB1, 0x01, 0x15, 0x00, 0x00, 0x03, 55});
@@ -296,11 +298,14 @@ static void testProperties() {
 
   TestAirConditioner device;
   device.applyProperties({PropertyValue{0x7777, 0x00, {1, 2, 3}},
-                          PropertyValue{0x8888, 0x10, {9}}});
+                          PropertyValue{static_cast<uint16_t>(PropertyId::INDOOR_HUMIDITY),
+                                        0x10, {47}}});
   const auto *unknown = device.getProperty(0x7777);
   assert(unknown != nullptr && unknown->data.size() == 3 && unknown->data[2] == 3);
-  const auto *failed = device.getProperty(0x8888);
-  assert(failed != nullptr && !failed->successful() && failed->data[0] == 9);
+  const auto *reserved = device.getProperty(static_cast<uint16_t>(PropertyId::INDOOR_HUMIDITY));
+  assert(reserved != nullptr && reserved->reserved == 0x10 && reserved->data[0] == 47);
+  assert(device.getState().indoor_humidity.hasValue() &&
+         device.getState().indoor_humidity.value() == 47);
 }
 
 static void testCapabilities() {
@@ -312,7 +317,8 @@ static void testCapabilities() {
   assert(!capabilities.read(report));
   assert(capabilities.valid());
   assert(capabilities.supportAnion());
-  assert(capabilities.supportOutdoorSilent());
+  assert(capabilities.reported(0x00CD));
+  assert(capabilities.get(0x00CD) != nullptr && capabilities.get(0x00CD)->data[0] == 3);
   assert(capabilities.minTempCool() == 16.0F && capabilities.maxTempHeat() == 30.0F);
   assert(capabilities.records().size() == 3);
 
@@ -402,6 +408,20 @@ static void testConfirmedStateControl() {
   assert(stream.tx.back()[9] == DEVICE_CONTROL);
   StatusData command{payload(stream.tx.back())};
   assert(near(command.getTargetTemp(), 25.0F));
+
+  // A validated cached status remains a usable full-state baseline. There is
+  // no invented age threshold that turns a control call into a delayed query.
+  stream.inject(bytes(STATUS_FIXTURES[0].hex));
+  ++test_millis;
+  device.loop();
+  stream.tx.clear();
+  test_millis += 60000;
+  Control later;
+  later.targetTemp = 24.0F;
+  device.control(later);
+  device.loop();
+  assert(stream.tx.size() == 1);
+  assert(stream.tx.back()[9] == DEVICE_CONTROL);
 }
 
 static void testGroupQueryWireFormat() {
@@ -421,5 +441,5 @@ int main() {
   testCapabilities();
   testConfirmedStateControl();
   testGroupQueryWireFormat();
-  std::puts("PASS: status, groups, properties, capabilities, confirmed-state control, and C1 wire format");
+  std::puts("PASS: captured status, raw preservation, corroborated semantics, control, and wire formats");
 }

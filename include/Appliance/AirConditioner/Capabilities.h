@@ -93,10 +93,6 @@ class Capabilities {
   bool supportEnergyStats() const { return this->m_powerCal; }
   bool supportEnergySetting() const { return this->m_powerCalSetting; }
   bool supportSound() const { return this->m_sound; }
-  bool supportFreshAir() const { return this->has(0x004B); }
-  bool supportCascade() const { return this->has(0x0059); }
-  bool supportOutdoorSilent() const { return this->has(0x00CD); }
-  bool supportIEco() const { return this->has(0x00E3); }
 
  protected:
   bool m_valid{};

@@ -41,14 +41,14 @@ struct AirConditionerState {
   Optional<uint8_t> error_code{};
   Optional<bool> filter_alert{};
   Optional<bool> display_on{};
-  Optional<uint8_t> display_level{};
-  Optional<bool> follow_me{};
+  Optional<uint8_t> c0_display_field{};
+  Optional<bool> c0_byte_8_bit_7{};
   Optional<bool> purifier{};
   Optional<bool> aux_heat{};
   Optional<bool> power_saving{};
   Optional<bool> smart_eye{};
   Optional<bool> natural_wind{};
-  Optional<bool> dry{};
+  Optional<bool> c0_byte_9_bit_2{};
   Optional<bool> eco_mode{};
   Optional<bool> sleep_mode{};
   Optional<bool> prevent_cold{};
@@ -59,7 +59,6 @@ struct AirConditionerState {
   Optional<uint16_t> fresh_filter_total{};
   Optional<uint16_t> fresh_filter_used{};
   Optional<bool> fahrenheit{};
-  Optional<bool> defrosting{};
   Optional<float> electrified_hours{};
   Optional<float> total_operating_hours{};
   Optional<float> current_operating_hours{};
@@ -78,8 +77,6 @@ struct AirConditionerState {
   Optional<uint16_t> target_indoor_fan_speed{};
   Optional<uint16_t> indoor_fan_speed{};
   Optional<uint16_t> outdoor_fan_speed{};
-  Optional<uint32_t> indoor_unit_fault_flags{};
-  Optional<uint32_t> indoor_unit_protection_flags{};
   Optional<bool> water_pump_running{};
   Optional<uint8_t> horizontal_louver_angle{};
   Optional<uint8_t> vertical_louver_angle{};
@@ -87,14 +84,9 @@ struct AirConditionerState {
   Optional<bool> prompt_tone{};
   Optional<bool> self_clean{};
   Optional<bool> breeze_away{};
-  Optional<uint8_t> breeze_control{};
   Optional<uint8_t> rate_select{};
   Optional<uint8_t> fresh_air_speed{};
-  Optional<bool> cascade{};
-  Optional<uint8_t> cascade_direction{};
-  Optional<bool> flash{};
   Optional<bool> outdoor_silent{};
-  Optional<bool> ieco{};
   Optional<bool> sound{};
 };
 
@@ -133,9 +125,10 @@ class AirConditioner : public ApplianceBase {
   bool getApplianceError() const;
   uint8_t getErrorCode() const;
   bool getFilterAlert() const;
-  bool hasFreshState(uint32_t max_age = 15000) const;
+  bool hasValidatedState() const { return this->m_state.valid; }
   uint32_t getStateAge() const;
   const AirConditionerState &getState() const { return this->m_state; }
+  const StatusData &getStatusData() const { return this->m_status; }
   const CommunicationDiagnostics &getDiagnostics() const { return this->m_diagnostics; }
   const Capabilities &getCapabilities() const { return this->m_capabilities; }
   const std::vector<PropertyValue> &getProperties() const { return this->m_properties; }

@@ -12,17 +12,17 @@ static uint8_t minimumSize(GroupId group) {
     case GroupId::PERFORMANCE:
       return 16;
     case GroupId::INDOOR_FAN:
-      return 13;
+      return 10;
     case GroupId::OUTDOOR_FAN:
       return 12;
     case GroupId::ENERGY:
       return 20;
     case GroupId::ENVIRONMENT:
-      return 12;
+      return 6;
     case GroupId::OUTDOOR_POWER:
       return 13;
     case GroupId::LOUVERS:
-      return 14;
+      return 5;
   }
   return 0xFF;
 }
@@ -89,6 +89,7 @@ bool decodeGroupData(const FrameData &frame, GroupId expected_group, PowerFormat
   result = GroupData{};
   result.group = expected_group;
   const uint8_t *data = frame.data();
+  result.raw_payload.assign(data + 4, data + frame.size() - 1);
   switch (expected_group) {
     case GroupId::RUNTIME:
       result.runtime.electrified_hours = hours(data + 4);
@@ -110,8 +111,6 @@ bool decodeGroupData(const FrameData &frame, GroupId expected_group, PowerFormat
       result.indoor_fan.target_speed = static_cast<uint16_t>(data[4]) * 8U;
       result.indoor_fan.actual_speed = static_cast<uint16_t>(data[5]) * 8U;
       result.indoor_fan.water_pump_running = (data[8] & 0x10) != 0;
-      result.indoor_fan.fault_flags = {data[6], data[7], data[8]};
-      result.indoor_fan.protection_flags = {data[9], data[10], data[11]};
       return true;
     case GroupId::OUTDOOR_FAN:
       result.outdoor_fan.actual_speed = static_cast<uint16_t>(data[10]) * 8U;
@@ -124,15 +123,11 @@ bool decodeGroupData(const FrameData &frame, GroupId expected_group, PowerFormat
       return true;
     case GroupId::ENVIRONMENT:
       result.environment.indoor_humidity = data[4];
-      result.environment.outdoor_fan_speed = static_cast<uint16_t>(data[8]) * 8U;
-      result.environment.defrosting = data[10] != 0;
       return true;
     case GroupId::OUTDOOR_POWER:
       result.outdoor_power.power_w = readU16LE(data + 10);
       return true;
     case GroupId::LOUVERS:
-      result.louvers.horizontal_angle = data[9];
-      result.louvers.vertical_angle = data[12];
       return true;
   }
   return false;

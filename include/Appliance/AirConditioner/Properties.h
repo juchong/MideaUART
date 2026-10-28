@@ -30,7 +30,7 @@ enum class PropertyId : uint16_t {
   ERROR_CODE = 0x003F,
   MODE_QUERY = 0x0041,
   BREEZE_AWAY = 0x0042,
-  BREEZE_CONTROL = 0x0043,
+  GENTLE_WIND_SENSE = 0x0043,
   FACE_REGISTER = 0x0044,
   HIGH_TEMPERATURE_MONITOR = 0x0047,
   RATE_SELECT = 0x0048,
@@ -43,7 +43,7 @@ enum class PropertyId : uint16_t {
   WATER_PUMP = 0x0050,
   PARENT_CONTROL = 0x0051,
   PREVENT_STRAIGHT_WIND_LR = 0x0058,
-  CASCADE = 0x0059,
+  WIND_AROUND = 0x0059,
   DEGERMING = 0x005A,
   LIGHT = 0x005B,
   CHILD_LOCK = 0x005C,
@@ -52,14 +52,14 @@ enum class PropertyId : uint16_t {
   OZONE = 0x005F,
   WIND_TOP = 0x0061,
   SOFT_WARM = 0x0063,
-  FLASH = 0x0067,
+  UNKNOWN_0067 = 0x0067,
   REWARMING_DRY = 0x0068,
   AROM = 0x0069,
   FRESH_FILTER_RESET = 0x0085,
   DUST_FULL_TIME_RESET = 0x00B8,
   WET_FILM_RESET = 0x00CC,
   OUTDOOR_SILENT = 0x00CD,
-  IECO = 0x00E3,
+  UNKNOWN_00E3 = 0x00E3,
   PRE_COOL_HEAT = 0x0201,
   PM25 = 0x020B,
   CAPABILITY_FAN_SPEED = 0x0210,
@@ -91,9 +91,10 @@ enum class PropertyId : uint16_t {
 
 struct PropertyValue {
   uint16_t id{};
-  uint8_t status{};
+  /// Fixed/reserved byte in B0/B1 response records. Preserve but do not infer
+  /// success or failure semantics from it.
+  uint8_t reserved{};
   std::vector<uint8_t> data{};
-  bool successful() const { return (this->status & 0x10) == 0; }
 };
 
 struct PropertyWrite {
@@ -104,9 +105,7 @@ struct PropertyWrite {
   static PropertyWrite scalar(PropertyId id, uint8_t value);
   static PropertyWrite breezeAway(bool state);
   static PropertyWrite freshAir(bool state, uint8_t fan_speed);
-  static PropertyWrite ieco(bool state, uint8_t level_count = 1);
   static PropertyWrite outdoorSilent(bool state);
-  static PropertyWrite cascade(bool state, uint8_t direction = 0);
 };
 
 class QueryPropertiesData : public FrameData {

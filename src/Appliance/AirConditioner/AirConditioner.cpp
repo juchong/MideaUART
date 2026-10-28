@@ -130,10 +130,6 @@ uint32_t AirConditioner::getStateAge() const {
   return this->m_state.valid ? TimerManager::ms() - this->m_state.received_at : UINT32_MAX;
 }
 
-bool AirConditioner::hasFreshState(uint32_t max_age) const {
-  return this->m_state.valid && this->getStateAge() <= max_age;
-}
-
 void AirConditioner::control(const Control &control) {
   mergeOptional(this->m_pendingControl.mode, control.mode);
   mergeOptional(this->m_pendingControl.preset, control.preset);
@@ -145,7 +141,7 @@ void AirConditioner::control(const Control &control) {
   mergeOptional(this->m_pendingControl.fahrenheit, control.fahrenheit);
   mergeOptional(this->m_pendingControl.targetHumidity, control.targetHumidity);
 
-  if (!this->hasFreshState()) {
+  if (!this->hasValidatedState()) {
     LOG_D(TAG, "Holding control update until a validated status frame is available...");
     this->m_getStatus();
     return;
@@ -154,7 +150,7 @@ void AirConditioner::control(const Control &control) {
 }
 
 void AirConditioner::m_flushPendingControl() {
-  if (this->m_sendControl || !this->hasFreshState())
+  if (this->m_sendControl || !this->hasValidatedState())
     return;
 
   Control control = this->m_pendingControl;
@@ -466,7 +462,8 @@ ResponseStatus AirConditioner::m_readStatus(FrameData data) {
   if (status_without_integrity.hasIndex(1))
     changed |= updateOptional(this->m_state.appliance_error, status_without_integrity.getApplianceError());
   if (status_without_integrity.hasIndex(8)) {
-    changed |= updateOptional(this->m_state.follow_me, status_without_integrity.getFollowMe());
+    changed |= updateOptional(this->m_state.c0_byte_8_bit_7,
+                              status_without_integrity.getByte8Bit7());
     changed |= updateOptional(this->m_state.power_saving, status_without_integrity.getPowerSaving());
     changed |= updateOptional(this->m_state.smart_eye, status_without_integrity.getSmartEye());
   }
@@ -474,7 +471,8 @@ ResponseStatus AirConditioner::m_readStatus(FrameData data) {
     changed |= updateOptional(this->m_state.purifier, status_without_integrity.getPurifier());
     changed |= updateOptional(this->m_state.aux_heat, status_without_integrity.getAuxHeat());
     changed |= updateOptional(this->m_state.natural_wind, status_without_integrity.getNaturalWind());
-    changed |= updateOptional(this->m_state.dry, status_without_integrity.getDry());
+    changed |= updateOptional(this->m_state.c0_byte_9_bit_2,
+                              status_without_integrity.getByte9Bit2());
     changed |= updateOptional(this->m_state.eco_mode, status_without_integrity.getEco());
   }
   if (status_without_integrity.hasIndex(13)) {
@@ -483,8 +481,8 @@ ResponseStatus AirConditioner::m_readStatus(FrameData data) {
                               status_without_integrity.getFreshFilterTimeout());
   }
   if (status_without_integrity.hasIndex(14)) {
-    changed |= updateOptional(this->m_state.display_level, status_without_integrity.getDisplayLevel());
-    changed |= updateOptional(this->m_state.display_on, status_without_integrity.getDisplayOn());
+    changed |= updateOptional(this->m_state.c0_display_field,
+                              status_without_integrity.getDisplayField());
     changed |= updateOptional(this->m_state.pmv, status_without_integrity.getPmv());
   }
   if (status_without_integrity.hasIndex(16))
@@ -546,16 +544,6 @@ void AirConditioner::m_applyGroup(const GroupData &data) {
       changed |= updateOptional(this->m_state.indoor_fan_speed, data.indoor_fan.actual_speed);
       changed |= updateOptional(this->m_state.water_pump_running,
                                 data.indoor_fan.water_pump_running);
-      changed |= updateOptional(
-          this->m_state.indoor_unit_fault_flags,
-          static_cast<uint32_t>(data.indoor_fan.fault_flags[0]) |
-              (static_cast<uint32_t>(data.indoor_fan.fault_flags[1]) << 8) |
-              (static_cast<uint32_t>(data.indoor_fan.fault_flags[2]) << 16));
-      changed |= updateOptional(
-          this->m_state.indoor_unit_protection_flags,
-          static_cast<uint32_t>(data.indoor_fan.protection_flags[0]) |
-              (static_cast<uint32_t>(data.indoor_fan.protection_flags[1]) << 8) |
-              (static_cast<uint32_t>(data.indoor_fan.protection_flags[2]) << 16));
       break;
     case GroupId::OUTDOOR_FAN:
       changed |= updateOptional(this->m_state.outdoor_fan_speed, data.outdoor_fan.actual_speed);
@@ -570,15 +558,11 @@ void AirConditioner::m_applyGroup(const GroupData &data) {
     case GroupId::ENVIRONMENT:
       if (data.environment.indoor_humidity > 0 && data.environment.indoor_humidity <= 100)
         changed |= updateOptional(this->m_state.indoor_humidity, data.environment.indoor_humidity);
-      changed |= updateOptional(this->m_state.outdoor_fan_speed, data.environment.outdoor_fan_speed);
-      changed |= updateOptional(this->m_state.defrosting, data.environment.defrosting);
       break;
     case GroupId::OUTDOOR_POWER:
       changed |= updateOptional(this->m_state.outdoor_unit_power, data.outdoor_power.power_w);
       break;
     case GroupId::LOUVERS:
-      changed |= updateOptional(this->m_state.horizontal_louver_angle, data.louvers.horizontal_angle);
-      changed |= updateOptional(this->m_state.vertical_louver_angle, data.louvers.vertical_angle);
       break;
   }
   if (changed)
@@ -594,7 +578,7 @@ void AirConditioner::m_applyProperties(const std::vector<PropertyValue> &propert
       this->m_properties.push_back(property);
     else
       *stored = property;
-    if (!property.successful() || property.data.empty())
+    if (property.data.empty())
       continue;
     const uint8_t value = property.data[0];
     switch (static_cast<PropertyId>(property.id)) {
@@ -610,7 +594,6 @@ void AirConditioner::m_applyProperties(const std::vector<PropertyValue> &propert
         break;
       case PropertyId::DISPLAY_CONTROL:
         changed |= updateOptional(this->m_state.display_on, value != 0);
-        changed |= updateOptional(this->m_state.display_level, value);
         break;
       case PropertyId::BREEZELESS:
         changed |= updateOptional(this->m_state.breezeless, value != 0);
@@ -631,9 +614,6 @@ void AirConditioner::m_applyProperties(const std::vector<PropertyValue> &propert
       case PropertyId::BREEZE_AWAY:
         changed |= updateOptional(this->m_state.breeze_away, value == 2);
         break;
-      case PropertyId::BREEZE_CONTROL:
-        changed |= updateOptional(this->m_state.breeze_control, value);
-        break;
       case PropertyId::RATE_SELECT:
         changed |= updateOptional(this->m_state.rate_select, value);
         break;
@@ -642,30 +622,11 @@ void AirConditioner::m_applyProperties(const std::vector<PropertyValue> &propert
             this->m_state.fresh_air_speed,
             static_cast<uint8_t>(property.data.size() > 1 && value ? property.data[1] : 0));
         break;
-      case PropertyId::WATER_PUMP:
-        changed |= updateOptional(this->m_state.water_pump_running, value != 0);
-        break;
-      case PropertyId::CASCADE:
-        changed |= updateOptional(this->m_state.cascade, value != 0);
-        if (property.data.size() > 1)
-          changed |= updateOptional(this->m_state.cascade_direction, property.data[1]);
-        break;
-      case PropertyId::FLASH:
-        changed |= updateOptional(this->m_state.flash, value != 0);
-        break;
       case PropertyId::OUTDOOR_SILENT:
         changed |= updateOptional(this->m_state.outdoor_silent, value == 3);
         break;
-      case PropertyId::IECO:
-        changed |= updateOptional(this->m_state.ieco,
-                                  property.data.size() > 2 ? property.data[2] != 0 : value != 0);
-        break;
       case PropertyId::SOUND:
         changed |= updateOptional(this->m_state.sound, value != 0);
-        break;
-      case PropertyId::ANION:
-        // Known units report this capability but require the C0/0x40 purifier bit for writes.
-        changed |= updateOptional(this->m_state.purifier, value != 0);
         break;
       default:
         break;

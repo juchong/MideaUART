@@ -22,20 +22,9 @@ PropertyWrite PropertyWrite::freshAir(bool state, uint8_t fan_speed) {
                        {static_cast<uint8_t>(state ? 1 : 0), fan_speed, 0xFF}};
 }
 
-PropertyWrite PropertyWrite::ieco(bool state, uint8_t level_count) {
-  std::vector<uint8_t> value{0x00, level_count, static_cast<uint8_t>(state ? 1 : 0)};
-  value.resize(13, 0x00);
-  return PropertyWrite{static_cast<uint16_t>(PropertyId::IECO), std::move(value)};
-}
-
 PropertyWrite PropertyWrite::outdoorSilent(bool state) {
   return PropertyWrite{static_cast<uint16_t>(PropertyId::OUTDOOR_SILENT),
                        {static_cast<uint8_t>(state ? 3 : 0)}};
-}
-
-PropertyWrite PropertyWrite::cascade(bool state, uint8_t direction) {
-  return PropertyWrite{static_cast<uint16_t>(PropertyId::CASCADE),
-                       {static_cast<uint8_t>(state ? 1 : 0), direction}};
 }
 
 QueryPropertiesData::QueryPropertiesData(const std::vector<uint16_t> &ids) : FrameData(2 + ids.size() * 2) {
@@ -76,7 +65,7 @@ bool decodeProperties(const FrameData &frame, std::vector<PropertyValue> &proper
       return false;
     PropertyValue property;
     property.id = static_cast<uint16_t>(frame.at(offset) | (static_cast<uint16_t>(frame.at(offset + 1)) << 8));
-    property.status = frame.at(offset + 2);
+    property.reserved = frame.at(offset + 2);
     const uint8_t length = frame.at(offset + 3);
     offset += 4;
     if (static_cast<uint16_t>(offset) + length > frame.size() - 1U)

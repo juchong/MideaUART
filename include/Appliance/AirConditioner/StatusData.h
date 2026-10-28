@@ -114,9 +114,10 @@ class StatusData : public FrameData {
   bool getApplianceError() const { return this->m_getValue(1, 0x80); }
   uint8_t getErrorCode() const { return this->m_getValue(16); }
   bool getFilterAlert() const { return this->m_getValue(13, 0x20); }
-  uint8_t getDisplayLevel() const { return this->m_getValue(14, 0x07, 4); }
-  bool getDisplayOn() const { return this->getDisplayLevel() != 7; }
-  bool getFollowMe() const { return this->m_getValue(8, 0x80); }
+  /// Raw C0 byte 14 bits 4..6. Display polarity is model-dependent.
+  uint8_t getDisplayField() const { return this->m_getValue(14, 0x07, 4); }
+  /// Raw C0 byte 8 bit 7. Its meaning is not established generically.
+  bool getByte8Bit7() const { return this->m_getValue(8, 0x80); }
   bool getPurifier() const { return this->m_getValue(9, 0x20); }
   void setPurifier(bool state) { this->m_setMask(9, state, 0x20); }
   bool getAuxHeat() const { return this->m_getValue(9, 0x08); }
@@ -124,7 +125,8 @@ class StatusData : public FrameData {
   bool getPowerSaving() const { return this->m_getValue(8, 0x08); }
   bool getSmartEye() const { return this->m_getValue(8, 0x40); }
   bool getNaturalWind() const { return this->m_getValue(9, 0x02); }
-  bool getDry() const { return this->m_getValue(9, 0x04); }
+  /// Raw C0 byte 9 bit 2. Implementations disagree between dry and dry-clean.
+  bool getByte9Bit2() const { return this->m_getValue(9, 0x04); }
   bool getEco() const { return this->m_getValue(9, 0x10); }
   bool getSleep() const { return this->m_getValue(10, 0x01); }
   bool getPreventCold() const { return this->m_getValue(10, 0x20); }
